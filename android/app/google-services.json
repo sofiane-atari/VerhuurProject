@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "150227700881",
+    "project_id": "verhuurproject",
+    "storage_bucket": "verhuurproject.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150227700881:android:5e8ef8cec3bba8ee738330",
+        "android_client_info": {
+          "package_name": "com.example.flutter_verhuur_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjVMWcsgwgu7SAVZUkTV_YZKxGaAxe2rw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
