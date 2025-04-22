@@ -19,11 +19,16 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool isLoggedIn = false;
+  String? loggedInVoornaam;
+  String? loggedInAchternaam;
 
-  void login() {
+  void login(String voornaam, String achternaam) {
     setState(() {
       isLoggedIn = true;
+      loggedInVoornaam = voornaam;
+      loggedInAchternaam = achternaam;
     });
+    print('ingelogd als: $voornaam $achternaam');
   }
 
   @override
@@ -31,7 +36,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.purple,
         textTheme: TextTheme(
           bodyLarge: TextStyle(
             fontSize: 18,

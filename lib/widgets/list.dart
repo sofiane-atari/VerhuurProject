@@ -10,13 +10,14 @@ class ListViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ListView App'),
-        backgroundColor: Colors.blueAccent,
+        title: Text('apparaten'),
+        backgroundColor: Colors.deepPurple,
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.blue.shade900, Colors.blue.shade300],
+            colors: [Colors.deepPurpleAccent, Colors.blue.shade300],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
