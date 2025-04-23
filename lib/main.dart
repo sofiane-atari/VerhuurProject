@@ -1,7 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_verhuur_project/widgets/homePage.dart';
-import 'package:flutter_verhuur_project/widgets/list.dart';
 import 'firebase_options.dart';
 import 'package:flutter_verhuur_project/widgets/login.dart';
 
@@ -20,16 +20,80 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool isLoggedIn = false;
-  String? loggedInVoornaam;
-  String? loggedInPassword;
+  User? _user;
 
-  void login(String voornaam, String password) {
-    setState(() {
-      isLoggedIn = true;
-      loggedInVoornaam = voornaam;
-      loggedInPassword = password;
+  @override
+  void initState() {
+    super.initState();
+    _auth.authStateChanges().listen((User? user) {
+      setState(() {
+        _user = user;
+        isLoggedIn = user != null;
+      });
     });
-    print('ingelogd als: $voornaam $password');
+  }
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<UserCredential?> signInUser(String email, String password) async {
+    try {
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        print('Er is geen gebruiker gevonden voor dat e-mailadres.');
+        // Toon een foutmelding aan de gebruiker
+      } else if (e.code == 'wrong-password') {
+        print('Het opgegeven wachtwoord is onjuist.');
+        // Toon een foutmelding aan de gebruiker
+      } else {
+        print('Er is een fout opgetreden: ${e.message}');
+        // Toon een algemene foutmelding aan de gebruiker
+      }
+      return null;
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
+
+  Future<UserCredential?> registerUser(String email, String password) async {
+    try {
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') {
+        print('Het opgegeven wachtwoord is te zwak.');
+        // Toon een foutmelding aan de gebruiker
+      } else if (e.code == 'email-already-in-use') {
+        print('Er bestaat al een account voor dat e-mailadres.');
+        // Toon een foutmelding aan de gebruiker
+      } else {
+        print('Er is een fout opgetreden: ${e.message}');
+        // Toon een algemene foutmelding aan de gebruiker
+      }
+      return null;
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
+
+  Future<void> _handleSignIn(String email, String password) async {
+    UserCredential? userCredential = await signInUser(email, password);
+    if (userCredential?.user != null) {
+      // Inloggen succesvol, de authStateChanges listener zal de state updaten
+      print('Ingelogd als: ${userCredential!.user!.email}');
+      // Hier kun je eventueel extra acties uitvoeren na het inloggen
+    } else {
+      // Inloggen mislukt, toon een foutmelding aan de gebruiker in de UI
+      print('Inloggen mislukt');
+      // TODO: Implementeer het tonen van een foutmelding in de LoginScreen
+    }
   }
 
   @override
@@ -46,7 +110,12 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
       ),
-      home: isLoggedIn ? const HomePage() : LoginScreen(onLogin: login),
+      home:
+          isLoggedIn
+              ? const HomePage()
+              : LoginScreen(
+                onLogin: (email, password) => _handleSignIn(email, password),
+              ),
     );
   }
 }

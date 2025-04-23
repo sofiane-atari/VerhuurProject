@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
-  final Function(String voornaam, String achternaam) onLogin;
+  final Function(String email, String password) onLogin;
 
   const LoginScreen({super.key, required this.onLogin});
 
@@ -11,8 +11,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _voornaamController = TextEditingController();
-  final TextEditingController _achternaamController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscureText = true;
 
   @override
@@ -29,9 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
               children: <Widget>[
                 TextFormField(
                   style: TextStyle(color: Colors.deepPurple),
-                  controller: _voornaamController,
+                  controller: _emailController,
                   decoration: const InputDecoration(
-                    labelText: 'Gebruikersnaam',
+                    labelText: 'email',
                     fillColor: Colors.black,
                     border: OutlineInputBorder(),
                   ),
@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16.0),
                 TextFormField(
                   style: TextStyle(color: Colors.deepPurple),
-                  controller: _achternaamController,
+                  controller: _passwordController,
                   obscureText: _obscureText,
                   decoration: InputDecoration(
                     labelText: 'Wachtwoord',
@@ -73,8 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
                       widget.onLogin(
-                        _voornaamController.text,
-                        _achternaamController.text,
+                        _emailController.text,
+                        _passwordController.text,
                       );
                     }
                   },

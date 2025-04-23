@@ -12,7 +12,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
-  double _currentZoom = 13.0;
+  final double _currentZoom = 13.0;
   String _appBarTitle = 'Klik op de map';
 
   @override
@@ -37,7 +37,6 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.list),
         backgroundColor: Colors.deepPurple,
         onPressed: () {
           Navigator.push(
@@ -45,6 +44,7 @@ class _MapScreenState extends State<MapScreen> {
             MaterialPageRoute(builder: (context) => ListViewScreen()),
           );
         },
+        child: Icon(Icons.list),
       ),
     );
   }
