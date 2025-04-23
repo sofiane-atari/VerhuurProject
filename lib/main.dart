@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_verhuur_project/widgets/homePage.dart';
 import 'package:flutter_verhuur_project/widgets/list.dart';
 import 'firebase_options.dart';
 import 'package:flutter_verhuur_project/widgets/login.dart';
@@ -45,7 +46,7 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
       ),
-      home: isLoggedIn ? ListViewScreen() : LoginScreen(onLogin: login),
+      home: isLoggedIn ? const HomePage() : LoginScreen(onLogin: login),
     );
   }
 }
