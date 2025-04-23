@@ -20,15 +20,15 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   bool isLoggedIn = false;
   String? loggedInVoornaam;
-  String? loggedInAchternaam;
+  String? loggedInPassword;
 
-  void login(String voornaam, String achternaam) {
+  void login(String voornaam, String password) {
     setState(() {
       isLoggedIn = true;
       loggedInVoornaam = voornaam;
-      loggedInAchternaam = achternaam;
+      loggedInPassword = password;
     });
-    print('ingelogd als: $voornaam $achternaam');
+    print('ingelogd als: $voornaam $password');
   }
 
   @override

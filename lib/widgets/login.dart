@@ -13,6 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _voornaamController = TextEditingController();
   final TextEditingController _achternaamController = TextEditingController();
+  bool _obscureText = true;
 
   @override
   Widget build(BuildContext context) {
@@ -30,13 +31,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(color: Colors.deepPurple),
                   controller: _voornaamController,
                   decoration: const InputDecoration(
-                    labelText: 'Voornaam',
+                    labelText: 'Gebruikersnaam',
                     fillColor: Colors.black,
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Vul je voornaam in';
+                      return 'Vul je gebruikersnaam in';
                     }
                     return null;
                   },
@@ -45,13 +46,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   style: TextStyle(color: Colors.deepPurple),
                   controller: _achternaamController,
-                  decoration: const InputDecoration(
-                    labelText: 'Achternaam',
-                    border: OutlineInputBorder(),
+                  obscureText: _obscureText,
+                  decoration: InputDecoration(
+                    labelText: 'Wachtwoord',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureText ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureText = !_obscureText;
+                        });
+                      },
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Vul je achternaam in';
+                      return 'Vul je Wachtwoord in';
                     }
                     return null;
                   },

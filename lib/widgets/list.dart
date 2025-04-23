@@ -31,27 +31,30 @@ class ListViewScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
-              child: ListTile(
-                title: Text(
-                  items[index],
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                leading: Icon(Icons.star, color: Colors.amber),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey.shade700,
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DetailScreen(item: items[index]),
+              child: SizedBox(
+                height: 160.0, // Stel hier de gewenste hoogte in
+                child: ListTile(
+                  title: Text(
+                    items[index],
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                },
+                  ),
+                  leading: Icon(Icons.star, color: Colors.amber),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.grey.shade700,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailScreen(item: items[index]),
+                      ),
+                    );
+                  },
+                ),
               ),
             );
           },
