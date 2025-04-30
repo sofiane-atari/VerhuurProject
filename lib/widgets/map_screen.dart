@@ -12,8 +12,14 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
-  final double _currentZoom = 13.0;
-  String _appBarTitle = 'Klik op de map';
+  final double _initialZoom = 13.0;
+  String _appBarTitle = 'Selecteer locatie';
+  LatLng? _selectedLocation;
+  List<Marker> _markers = [];
+  final LatLng _defaultLocation = const LatLng(
+    51.2302,
+    4.4162,
+  ); // Antwerpen coördinaten
 
   @override
   Widget build(BuildContext context) {
@@ -21,37 +27,82 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: Text(_appBarTitle),
         backgroundColor: Colors.deepPurple,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.center_focus_strong),
+            onPressed: _centerToDefaultLocation,
+          ),
+        ],
       ),
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
-          initialCenter: LatLng(51.2302, 4.4162),
-          initialZoom: _currentZoom,
-          onTap: (tapPosition, point) => _updateLocation(point),
+          initialCenter: _defaultLocation,
+          initialZoom: _initialZoom,
+          onTap: (tapPosition, point) => _handleMapTap(point),
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'edu.ap.flutter_verhuur_project',
+            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: const ['a', 'b', 'c'],
           ),
+          MarkerLayer(markers: _markers),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.deepPurple,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ListViewScreen()),
-          );
-        },
-        child: Icon(Icons.list),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'list_button',
+            backgroundColor: Colors.deepPurple,
+            onPressed:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ListViewScreen()),
+                ),
+            child: const Icon(Icons.list),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'zoom_button',
+            backgroundColor: Colors.deepPurple,
+            onPressed: _zoomIn,
+            child: const Icon(Icons.zoom_in),
+          ),
+        ],
       ),
     );
   }
 
-  void _updateLocation(LatLng point) {
+  void _handleMapTap(LatLng point) {
     setState(() {
-      _appBarTitle = 'Lat: ${point.latitude}, Lon: ${point.longitude}';
+      _selectedLocation = point;
+      _appBarTitle =
+          'Geselecteerd: ${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}';
+      _markers = [
+        Marker(
+          point: point,
+          width: 40,
+          height: 40,
+          child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+        ),
+      ];
     });
+  }
+
+  void _centerToDefaultLocation() {
+    _mapController.move(_defaultLocation, _initialZoom);
+    setState(() {
+      _appBarTitle = 'Selecteer locatie';
+      _markers = [];
+      _selectedLocation = null;
+    });
+  }
+
+  void _zoomIn() {
+    _mapController.move(
+      _mapController.camera.center,
+      _mapController.camera.zoom + 1,
+    );
   }
 }
