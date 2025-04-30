@@ -1,10 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_verhuur_project/widgets/dashboard.dart';
 import 'package:flutter_verhuur_project/widgets/map_screen.dart';
 import 'package:flutter_verhuur_project/widgets/list.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final User? user;
+
+  const HomePage({super.key, this.user});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -12,12 +15,19 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  User? _user; // Declare _user as nullable
+  late List<Widget> _pages;
 
-  static final List<Widget> _pages = <Widget>[
-    const Dashboard(),
-    MapScreen(),
-    ListViewScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _user = widget.user; // Initialize _user here
+    _pages = [
+      Dashboard(user: _user), // Pass the user here
+      const MapScreen(),
+      ListViewScreen(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
