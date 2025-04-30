@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ApplianceModel {
   final String id;
   final String naam;
@@ -5,9 +7,10 @@ class ApplianceModel {
   final double prijs;
   final String eenheid;
   final bool isBeschikbaar;
-  final String locatie;
+  final GeoPoint locatie;
   final List<String> genre;
   final String staat;
+  final String eigenaarId;
 
   ApplianceModel({
     required this.id,
@@ -19,5 +22,6 @@ class ApplianceModel {
     required this.locatie,
     required this.genre,
     required this.staat,
+    required this.eigenaarId,
   });
 }

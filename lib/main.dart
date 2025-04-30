@@ -21,7 +21,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   bool isLoggedIn = false;
   User? _user;
-
   @override
   void initState() {
     super.initState();
@@ -112,7 +111,7 @@ class _MyAppState extends State<MyApp> {
       ),
       home:
           isLoggedIn
-              ? const HomePage()
+              ? HomePage(user: _user) // Geef de gebruiker mee
               : LoginScreen(
                 onLogin: (email, password) => _handleSignIn(email, password),
               ),
