@@ -139,7 +139,7 @@ class _DashboardState extends State<Dashboard>
                     : Container(
                       color: Colors.grey[200],
                       child: const Center(child: Icon(Icons.photo, size: 50)),
-                    ), // Dit haakje was vergeten
+                    ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
