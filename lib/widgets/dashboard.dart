@@ -6,7 +6,6 @@ import 'package:flutter_verhuur_project/widgets/list.dart';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_verhuur_project/Model/appliance_model.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -199,12 +198,12 @@ class _DashboardState extends State<Dashboard>
   }
 
   Widget _buildReservations() {
-    // Implementeer later
+    // TODO
     return const Center(child: Text('Reserveringen komen hier'));
   }
 
   Widget _buildSettings() {
-    // Implementeer later
+    // TODO
     return const Center(child: Text('Instellingen komen hier'));
   }
 
