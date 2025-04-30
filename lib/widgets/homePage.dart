@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_verhuur_project/widgets/dashboard.dart';
 import 'package:flutter_verhuur_project/widgets/map_screen.dart';
 import 'package:flutter_verhuur_project/widgets/list.dart';
 
@@ -13,7 +14,8 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   static final List<Widget> _pages = <Widget>[
-    const MapScreen(),
+    const Dashboard(),
+    MapScreen(),
     ListViewScreen(),
   ];
 
@@ -26,13 +28,13 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verhuur App')),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.deepPurple,
         onTap: _onItemTapped,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Kaart'),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Apparaten'),
         ],
