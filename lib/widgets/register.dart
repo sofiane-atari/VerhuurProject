@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Importeer FirebaseAuth voor eventuele toekomstige context
 
 class RegisterScreen extends StatefulWidget {
   final Function(String email, String password) onRegister;
+  final VoidCallback?
+  onGoToLogin; // Toegevoegd: Callback voor navigatie naar Login
 
-  const RegisterScreen({super.key, required this.onRegister});
+  const RegisterScreen({super.key, required this.onRegister, this.onGoToLogin});
 
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
@@ -31,6 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: <Widget>[
                 TextFormField(
                   // E-mail invoerveld
+                  style: TextStyle(color: Colors.deepPurple),
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
@@ -51,6 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16.0), // Verticale ruimte tussen velden
                 TextFormField(
                   // Wachtwoord invoerveld
+                  style: TextStyle(color: Colors.deepPurple),
                   controller: _passwordController,
                   obscureText: _obscureText,
                   decoration: InputDecoration(
@@ -108,6 +112,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: const TextStyle(color: Colors.red),
                     ),
                   ),
+                const SizedBox(height: 16.0), // Ruimte voor de nieuwe knop
+                TextButton(
+                  onPressed: () {
+                    if (widget.onGoToLogin != null) {
+                      widget
+                          .onGoToLogin!(); // Roep de callback aan als deze is ingesteld
+                    }
+                  },
+                  child: const Text(
+                    'Heeft u al een account? Log in',
+                  ), // Knop om naar Login te gaan
+                ),
               ],
             ),
           ),

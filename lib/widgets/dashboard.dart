@@ -6,7 +6,7 @@ import 'package:flutter_verhuur_project/Model/Appliance_model.dart';
 class Dashboard extends StatefulWidget {
   final User? user;
 
-  const Dashboard({Key? key, this.user}) : super(key: key);
+  const Dashboard({super.key, this.user});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -128,83 +128,10 @@ class _DashboardState extends State<Dashboard>
 
   Widget _buildItemCard(ApplianceModel item) {
     return Card(
-<<<<<<< HEAD
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child:
-                item.afbeelding.isNotEmpty
-                    ? Image.network(
-                      item.afbeelding,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    )
-                    : Container(
-                      color: Colors.grey[200],
-                      child: const Center(child: Icon(Icons.photo, size: 50)),
-                    ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.naam,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '€${item.prijs}/${item.eenheid}',
-                  style: const TextStyle(color: Colors.deepPurple),
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 4,
-                  children:
-                      item.genre
-                          .map(
-                            (category) => Chip(
-                              label: Text(category),
-                              labelStyle: const TextStyle(fontSize: 10),
-                            ),
-                          )
-                          .toList(),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      item.isBeschikbaar
-                          ? Icons.check_circle
-                          : Icons.remove_circle,
-                      color: item.isBeschikbaar ? Colors.green : Colors.red,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.isBeschikbaar ? 'Beschikbaar' : 'Niet beschikbaar',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-=======
       // ... (kaart styling en weergave van item details)
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Text(item.naam),
->>>>>>> d6ee38228356df9b0ac61a35322811eb29fbceb2
       ),
     );
   }
