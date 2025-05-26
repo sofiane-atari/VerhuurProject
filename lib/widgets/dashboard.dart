@@ -13,7 +13,7 @@ import 'package:geolocator/geolocator.dart';
 class Dashboard extends StatefulWidget {
   final User? user;
 
-  const Dashboard({Key? key, this.user}) : super(key: key);
+  const Dashboard({super.key, this.user});
 
   @override
   State<Dashboard> createState() => _DashboardState();

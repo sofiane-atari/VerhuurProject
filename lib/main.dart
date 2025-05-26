@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_verhuur_project/widgets/homePage.dart';
+import 'package:flutter_verhuur_project/widgets/register.dart';
 import 'firebase_options.dart';
 import 'package:flutter_verhuur_project/widgets/login.dart';
 
@@ -42,20 +43,36 @@ class _MyAppState extends State<MyApp> {
       );
       return credential;
     } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Er is een fout opgetreden bij het inloggen.';
       if (e.code == 'user-not-found') {
-        print('Er is geen gebruiker gevonden voor dat e-mailadres.');
-        // Toon een foutmelding aan de gebruiker
+        errorMessage = 'Er is geen gebruiker gevonden voor dat e-mailadres.';
       } else if (e.code == 'wrong-password') {
-        print('Het opgegeven wachtwoord is onjuist.');
-        // Toon een foutmelding aan de gebruiker
-      } else {
-        print('Er is een fout opgetreden: ${e.message}');
-        // Toon een algemene foutmelding aan de gebruiker
+        errorMessage = 'Het opgegeven wachtwoord is onjuist.';
       }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
       return null;
     } catch (e) {
       print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Er is een onverwachte fout opgetreden.')),
+      );
       return null;
+    }
+  }
+
+  Future<void> _handleRegister(String email, String password) async {
+    UserCredential? userCredential = await registerUser(email, password);
+    if (userCredential?.user != null) {
+      print('Registratie succesvol: ${userCredential!.user!.email}');
+      // Na registratie wordt de gebruiker automatisch ingelogd,
+      // dus authStateChanges zal de UI updaten.
+      // Optioneel: toon een succesmelding en navigeer terug naar login of direct naar home
+      Navigator.pop(context); // Sluit het registratiescherm
+    } else {
+      print('Registratie mislukt');
+      // Foutmelding wordt al getoond via SnackBar in registerUser
     }
   }
 
@@ -65,19 +82,21 @@ class _MyAppState extends State<MyApp> {
           .createUserWithEmailAndPassword(email: email, password: password);
       return credential;
     } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Er is een fout opgetreden bij de registratie.';
       if (e.code == 'weak-password') {
-        print('Het opgegeven wachtwoord is te zwak.');
-        // Toon een foutmelding aan de gebruiker
+        errorMessage = 'Het opgegeven wachtwoord is te zwak.';
       } else if (e.code == 'email-already-in-use') {
-        print('Er bestaat al een account voor dat e-mailadres.');
-        // Toon een foutmelding aan de gebruiker
-      } else {
-        print('Er is een fout opgetreden: ${e.message}');
-        // Toon een algemene foutmelding aan de gebruiker
+        errorMessage = 'Er bestaat al een account voor dat e-mailadres.';
       }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
       return null;
     } catch (e) {
       print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Er is een onverwachte fout opgetreden.')),
+      );
       return null;
     }
   }
@@ -89,10 +108,25 @@ class _MyAppState extends State<MyApp> {
       print('Ingelogd als: ${userCredential!.user!.email}');
       // Hier kun je eventueel extra acties uitvoeren na het inloggen
     } else {
-      // Inloggen mislukt, toon een foutmelding aan de gebruiker in de UI
       print('Inloggen mislukt');
-      // TODO: Implementeer het tonen van een foutmelding in de LoginScreen
+      // Foutmelding wordt al getoond via SnackBar in signInUser
     }
+  }
+
+  void _goToRegisterScreen(BuildContext loginContext) {
+    Navigator.of(loginContext).push(
+      MaterialPageRoute(
+        builder:
+            (context) => RegisterScreen(
+              onRegister: _handleRegister,
+              onGoToLogin: () {
+                Navigator.pop(
+                  context,
+                ); // Sluit het registratiescherm om terug te gaan naar login
+              },
+            ),
+      ),
+    );
   }
 
   @override
@@ -101,7 +135,7 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.purple,
-        textTheme: TextTheme(
+        textTheme: const TextTheme(
           bodyLarge: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -114,6 +148,9 @@ class _MyAppState extends State<MyApp> {
               ? HomePage(user: _user) // Geef de gebruiker mee
               : LoginScreen(
                 onLogin: (email, password) => _handleSignIn(email, password),
+                // Correcte manier om de functie door te geven
+                onGoToRegister:
+                    (loginContext) => _goToRegisterScreen(loginContext),
               ),
     );
   }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_verhuur_project/widgets/register.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function(String email, String password) onLogin;
+  final void Function(BuildContext context)? onGoToRegister;
 
-  const LoginScreen({super.key, required this.onLogin});
+  const LoginScreen({super.key, required this.onLogin, this.onGoToRegister});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -79,6 +81,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     }
                   },
                   child: const Text('Login'),
+                ),
+                const SizedBox(height: 16.0),
+                TextButton(
+                  onPressed: () {
+                    if (widget.onGoToRegister != null) {
+                      widget.onGoToRegister!(
+                        context,
+                      ); // Correcte aanroep van de callback
+                    }
+                  },
+                  child: const Text(
+                    'Heeft u geen account? Registreer',
+                  ), // Knop om naar Registratie te gaan
                 ),
               ],
             ),
