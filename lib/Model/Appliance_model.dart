@@ -7,7 +7,7 @@ class ApplianceModel {
   final double prijs;
   final String eenheid;
   final bool isBeschikbaar;
-  final GeoPoint locatie;
+  final GeoPoint? locatie;
   final List<String> genre;
   final String staat;
   final String eigenaarId;
@@ -19,9 +19,23 @@ class ApplianceModel {
     required this.prijs,
     required this.eenheid,
     required this.isBeschikbaar,
-    required this.locatie,
+    this.locatie,
     required this.genre,
     required this.staat,
     required this.eigenaarId,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Naam': naam,
+      'afbeelding': afbeelding,
+      'prijs': prijs,
+      'eenheid': eenheid,
+      'isBeschikbaar': isBeschikbaar,
+      'locatie': locatie,
+      'genre': genre,
+      'staat': staat,
+      'eigenaarId': eigenaarId,
+    };
+  }
 }

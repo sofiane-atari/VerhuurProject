@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:flutter_verhuur_project/widgets/list.dart';
+import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -11,98 +9,79 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final MapController _mapController = MapController();
-  final double _initialZoom = 13.0;
-  String _appBarTitle = 'Selecteer locatie';
-  LatLng? _selectedLocation;
-  List<Marker> _markers = [];
-  final LatLng _defaultLocation = const LatLng(
-    51.2302,
-    4.4162,
-  ); // Antwerpen coördinaten
+  late MapController _mapController;
+  final GeoPoint _defaultLocation = GeoPoint(
+    latitude: 51.2302,
+    longitude: 4.4162,
+  ); // Antwerpen
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController.withPosition(initPosition: _defaultLocation);
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_appBarTitle),
-        backgroundColor: Colors.deepPurple,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.center_focus_strong),
-            onPressed: _centerToDefaultLocation,
+      body: OSMFlutter(
+        controller: _mapController,
+        onMapIsReady: (isReady) {
+          if (isReady) {
+            // Map is ready
+          }
+        },
+        osmOption: OSMOption(
+          // Use OSMOption to configure the map
+          zoomOption: ZoomOption(
+            initZoom: 10, // You can adjust the initial zoom level
+            minZoomLevel: 3,
+            maxZoomLevel: 19,
+            stepZoom: 1.0,
           ),
-        ],
-      ),
-      body: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          initialCenter: _defaultLocation,
-          initialZoom: _initialZoom,
-          onTap: (tapPosition, point) => _handleMapTap(point),
+          userLocationMarker: UserLocationMaker(
+            personMarker: const MarkerIcon(
+              icon: Icon(
+                Icons.location_history_rounded,
+                color: Colors.red,
+                size: 48,
+              ),
+            ),
+            directionArrowMarker: const MarkerIcon(
+              icon: Icon(Icons.double_arrow, size: 48),
+            ),
+          ),
         ),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: const ['a', 'b', 'c'],
-          ),
-          MarkerLayer(markers: _markers),
-        ],
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
-            heroTag: 'list_button',
+            heroTag: 'zoom_in_button',
             backgroundColor: Colors.deepPurple,
-            onPressed:
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ListViewScreen()),
-                ),
-            child: const Icon(Icons.list),
+            onPressed: () {
+              _mapController.zoomIn();
+            },
+            child: const Icon(Icons.zoom_in),
           ),
           const SizedBox(height: 16),
           FloatingActionButton(
-            heroTag: 'zoom_button',
+            heroTag: 'zoom_out_button',
             backgroundColor: Colors.deepPurple,
-            onPressed: _zoomIn,
-            child: const Icon(Icons.zoom_in),
+            onPressed: () {
+              _mapController.zoomOut();
+            },
+            child: const Icon(Icons.zoom_out),
           ),
+          const SizedBox(height: 16),
         ],
       ),
-    );
-  }
-
-  void _handleMapTap(LatLng point) {
-    setState(() {
-      _selectedLocation = point;
-      _appBarTitle =
-          'Geselecteerd: ${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}';
-      _markers = [
-        Marker(
-          point: point,
-          width: 40,
-          height: 40,
-          child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
-        ),
-      ];
-    });
-  }
-
-  void _centerToDefaultLocation() {
-    _mapController.move(_defaultLocation, _initialZoom);
-    setState(() {
-      _appBarTitle = 'Selecteer locatie';
-      _markers = [];
-      _selectedLocation = null;
-    });
-  }
-
-  void _zoomIn() {
-    _mapController.move(
-      _mapController.camera.center,
-      _mapController.camera.zoom + 1,
     );
   }
 }
