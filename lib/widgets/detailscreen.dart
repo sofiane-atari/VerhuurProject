@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_verhuur_project/Model/Appliance_model.dart'; // Importeer je ApplianceModel
-import 'package:cloud_firestore/cloud_firestore.dart'; // Imr Firestore
+import 'package:cloud_firestore/cloud_firestore.dart'; // Importeer Firestore
+import 'package:firebase_auth/firebase_auth.dart'; // Importeer FirebaseAuth
 
 class DetailScreen extends StatefulWidget {
-  // Maak het een StatefulWidget
   final ApplianceModel item;
 
   const DetailScreen({super.key, required this.item});
@@ -15,12 +15,32 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   final FirebaseFirestore _firestore =
       FirebaseFirestore.instance; // Firestore instantie
+  String?
+  _currentUserId; // Toegevoegd: Om de ID van de huidige huurder op te slaan
+
+  @override
+  void initState() {
+    super.initState();
+    // Haal de ID van de momenteel ingelogde gebruiker op
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  }
 
   // Functie om een item te huren
   Future<void> _rentItem() async {
+    // Controleer of het item-ID beschikbaar is
     if (widget.item.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Kan item niet huren: ID ontbreekt.')),
+      );
+      return;
+    }
+
+    // Controleer of er een gebruiker is ingelogd
+    if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('U moet ingelogd zijn om een item te huren.'),
+        ),
       );
       return;
     }
@@ -29,11 +49,13 @@ class _DetailScreenState extends State<DetailScreen> {
     DateTime newReservedUntil = DateTime.now().add(const Duration(days: 7));
 
     try {
+      // Update het Firestore-document van het item
       await _firestore.collection('apparaten').doc(widget.item.id).update({
         'isBeschikbaar': false, // Markeer als niet beschikbaar
         'reservedUntil': Timestamp.fromDate(
           newReservedUntil,
         ), // Stel de reserveringsdatum in
+        'huurderId': _currentUserId, // Voeg de ID van de huurder toe
       });
 
       // Optioneel: update de lokale state van het item direct na de update
@@ -41,6 +63,8 @@ class _DetailScreenState extends State<DetailScreen> {
       setState(() {
         widget.item.isBeschikbaar = false;
         widget.item.reservedUntil = newReservedUntil;
+        widget.item.huurderId =
+            _currentUserId; // Update ook lokaal de huurderId
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +93,9 @@ class _DetailScreenState extends State<DetailScreen> {
         widget.item.isBeschikbaar &&
         (widget.item.reservedUntil == null ||
             widget.item.reservedUntil!.isBefore(DateTime.now()));
+
+    // De huurknop is alleen zichtbaar als het item beschikbaar is EN de huidige gebruiker is ingelogd
+    bool showRentButton = isCurrentlyAvailable && _currentUserId != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -179,6 +206,15 @@ class _DetailScreenState extends State<DetailScreen> {
                   ),
                 ),
               ),
+
+            if (!isCurrentlyAvailable && widget.item.huurderId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  'Huurder ID: ${widget.item.huurderId}',
+                  style: const TextStyle(color: Colors.blueGrey, fontSize: 14),
+                ),
+              ),
             const SizedBox(height: 16),
 
             // Genres
@@ -218,12 +254,12 @@ class _DetailScreenState extends State<DetailScreen> {
             // Huur knop
             ElevatedButton(
               onPressed:
-                  isCurrentlyAvailable
+                  showRentButton
                       ? _rentItem
-                      : null, // Schakel knop uit indien niet beschikbaar
+                      : null, // Schakel knop uit indien niet beschikbaar of geen gebruiker ingelogd
               style: ElevatedButton.styleFrom(
                 backgroundColor:
-                    isCurrentlyAvailable
+                    showRentButton
                         ? Colors.deepPurple
                         : Colors.grey, // Kleur op basis van beschikbaarheid
                 foregroundColor: Colors.white,
@@ -237,7 +273,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 elevation: 5,
               ),
               child: Text(
-                isCurrentlyAvailable ? 'Huur dit item' : 'Niet beschikbaar',
+                showRentButton ? 'Huur dit item' : 'Niet beschikbaar',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,

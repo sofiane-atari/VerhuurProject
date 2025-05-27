@@ -12,6 +12,7 @@ class ApplianceModel {
   final String staat;
   final String eigenaarId;
   DateTime? reservedUntil;
+  String? huurderId;
 
   ApplianceModel({
     required this.id,
@@ -25,6 +26,7 @@ class ApplianceModel {
     required this.staat,
     required this.eigenaarId,
     this.reservedUntil,
+    this.huurderId,
   });
 
   Map<String, dynamic> toJson() {
@@ -40,6 +42,7 @@ class ApplianceModel {
       'eigenaarId': eigenaarId,
       'reservedUntil':
           reservedUntil != null ? Timestamp.fromDate(reservedUntil!) : null,
+      'huurderId': huurderId,
     };
   }
 }

@@ -63,24 +63,17 @@ class _DashboardState extends State<Dashboard>
   }
 
   Widget _buildMyItems() {
-    // Controleer of de gebruiker is ingelogd
     if (_currentUserId == null) {
       return const Center(
         child: Text('Je moet ingelogd zijn om je items te zien.'),
       );
     }
 
-    // Stream om de apparaten van de huidige gebruiker op te halen
     return StreamBuilder<QuerySnapshot>(
       stream:
           _firestore
-              .collection(
-                'apparaten',
-              ) // Zorg ervoor dat dit de juiste collectienaam is
-              .where(
-                'eigenaarId',
-                isEqualTo: _currentUserId,
-              ) // Filter op eigenaarId
+              .collection('apparaten')
+              .where('eigenaarId', isEqualTo: _currentUserId)
               .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -99,8 +92,7 @@ class _DashboardState extends State<Dashboard>
           );
         }
 
-        // Map de documenten naar ApplianceModel objecten
-        List<ApplianceModel> items =
+        List<ApplianceModel> allItems =
             snapshot.data!.docs.map((doc) {
               Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
               return ApplianceModel(
@@ -113,20 +105,82 @@ class _DashboardState extends State<Dashboard>
                 locatie:
                     data['locatie'] is GeoPoint
                         ? data['locatie'] as GeoPoint
-                        : const GeoPoint(0, 0), // Fallback voor locatie
+                        : null,
                 genre: List<String>.from(data['genre'] ?? []),
                 staat: data['staat'] ?? '',
                 eigenaarId: data['eigenaarId'] ?? '',
+                reservedUntil: (data['reservedUntil'] as Timestamp?)?.toDate(),
+                huurderId: data['huurderId'] as String?,
               );
             }).toList();
 
-        // Gebruik een ListView.builder of GridView.builder om de items weer te geven
-        return ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return _buildItemCard(item);
-          },
+        List<ApplianceModel> availableItems = [];
+        List<ApplianceModel> unavailableItems = [];
+
+        for (var item in allItems) {
+          bool isCurrentlyAvailable =
+              item.isBeschikbaar &&
+              (item.reservedUntil == null ||
+                  item.reservedUntil!.isBefore(DateTime.now()));
+          if (isCurrentlyAvailable) {
+            availableItems.add(item);
+          } else {
+            unavailableItems.add(item);
+          }
+        }
+
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (availableItems.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    'Beschikbare Items',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              if (availableItems.isNotEmpty)
+                ListView.builder(
+                  // Gewijzigd van GridView.builder
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(8),
+                  itemCount: availableItems.length,
+                  itemBuilder: (context, index) {
+                    final item = availableItems[index];
+                    return _buildItemCard(item);
+                  },
+                ),
+              if (unavailableItems.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    'Niet Beschikbare Items',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              if (unavailableItems.isNotEmpty)
+                ListView.builder(
+                  // Gewijzigd van GridView.builder
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(8),
+                  itemCount: unavailableItems.length,
+                  itemBuilder: (context, index) {
+                    final item = unavailableItems[index];
+                    return _buildItemCard(item);
+                  },
+                ),
+              if (availableItems.isEmpty && unavailableItems.isEmpty)
+                const Center(child: Text('Je hebt nog geen items toegevoegd.')),
+            ],
+          ),
         );
       },
     );
@@ -479,7 +533,65 @@ class _DashboardState extends State<Dashboard>
   }
 
   Widget _buildReservations() {
-    return const Center(child: Text('Reserveringen komen hier'));
+    if (_currentUserId == null) {
+      return const Center(
+        child: Text('Je moet ingelogd zijn om je reserveringen te zien.'),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          _firestore
+              .collection('apparaten')
+              .where(
+                'huurderId',
+                isEqualTo: _currentUserId,
+              ) // Filter op huurderId
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Er is een fout opgetreden: ${snapshot.error}'),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('Je hebt nog geen items gehuurd.'));
+        }
+
+        List<ApplianceModel> rentedItems =
+            snapshot.data!.docs.map((doc) {
+              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+              return ApplianceModel(
+                id: doc.id,
+                naam: data['Naam'] ?? '',
+                afbeelding: data['afbeelding'] ?? '',
+                prijs: data['prijs']?.toDouble() ?? 0.0,
+                eenheid: data['eenheid'] ?? '',
+                isBeschikbaar: data['isBeschikbaar'] ?? false,
+                locatie: data['locatie'] is GeoPoint ? data['locatie'] : null,
+                genre: List<String>.from(data['genre'] ?? []),
+                staat: data['staat'] ?? '',
+                eigenaarId: data['eigenaarId'] ?? '',
+                reservedUntil: (data['reservedUntil'] as Timestamp?)?.toDate(),
+                huurderId: data['huurderId'] as String?,
+              );
+            }).toList();
+
+        return ListView.builder(
+          itemCount: rentedItems.length,
+          itemBuilder: (context, index) {
+            final item = rentedItems[index];
+            // Gebruik dezelfde _buildItemCard of maak een aparte voor reserveringen
+            return _buildItemCard(item);
+          },
+        );
+      },
+    );
   }
 
   Widget _buildSettings() {

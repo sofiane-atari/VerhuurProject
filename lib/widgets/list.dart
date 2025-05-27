@@ -161,6 +161,7 @@ class _ListViewScreenState extends State<ListViewScreen> {
                 genre: List<String>.from(data['genre'] ?? []),
                 staat: data['staat'] ?? '',
                 eigenaarId: data['eigenaarId'] ?? '',
+                huurderId: data['huurderId'] as String?,
               );
             }).toList();
 
