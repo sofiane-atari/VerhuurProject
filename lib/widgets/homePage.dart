@@ -6,8 +6,9 @@ import 'package:flutter_verhuur_project/widgets/list.dart';
 
 class HomePage extends StatefulWidget {
   final User? user;
+  final VoidCallback onSignOut;
 
-  const HomePage({super.key, this.user});
+  const HomePage({super.key, this.user, required this.onSignOut});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -16,14 +17,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   User? _user; // Declare _user as nullable
+  VoidCallback? _onSignOut;
   late List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     _user = widget.user; // Initialize _user here
+    _onSignOut = widget.onSignOut;
     _pages = [
-      Dashboard(user: _user), // Pass the user here
+      Dashboard(user: _user, onSignOut: _onSignOut), // Pass the user here
       const MapScreen(),
       ListViewScreen(),
     ];

@@ -1,30 +1,91 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_verhuur_project/Model/Appliance_model.dart'; // Importeer je ApplianceModel
+import 'package:cloud_firestore/cloud_firestore.dart'; // Imr Firestore
 
-class DetailScreen extends StatelessWidget {
-  final ApplianceModel item; // Aangepast naar ApplianceModel
+class DetailScreen extends StatefulWidget {
+  // Maak het een StatefulWidget
+  final ApplianceModel item;
 
   const DetailScreen({super.key, required this.item});
 
   @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  final FirebaseFirestore _firestore =
+      FirebaseFirestore.instance; // Firestore instantie
+
+  // Functie om een item te huren
+  Future<void> _rentItem() async {
+    if (widget.item.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kan item niet huren: ID ontbreekt.')),
+      );
+      return;
+    }
+
+    // Bereken de nieuwe reservedUntil datum (1 week vanaf nu)
+    DateTime newReservedUntil = DateTime.now().add(const Duration(days: 7));
+
+    try {
+      await _firestore.collection('apparaten').doc(widget.item.id).update({
+        'isBeschikbaar': false, // Markeer als niet beschikbaar
+        'reservedUntil': Timestamp.fromDate(
+          newReservedUntil,
+        ), // Stel de reserveringsdatum in
+      });
+
+      // Optioneel: update de lokale state van het item direct na de update
+      // Dit zorgt voor een snellere UI-update zonder opnieuw te hoeven laden
+      setState(() {
+        widget.item.isBeschikbaar = false;
+        widget.item.reservedUntil = newReservedUntil;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${widget.item.naam} is succesvol gehuurd voor 1 week!',
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Fout bij huren van ${widget.item.naam}: ${e.toString()}',
+          ),
+        ),
+      );
+      print('Error renting item: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Bepaal of het item momenteel beschikbaar is
+    bool isCurrentlyAvailable =
+        widget.item.isBeschikbaar &&
+        (widget.item.reservedUntil == null ||
+            widget.item.reservedUntil!.isBefore(DateTime.now()));
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(item.naam), // Toon de naam van het item in de AppBar
+        title: Text(widget.item.naam), // Toon de naam van het item in de AppBar
         backgroundColor: Colors.deepPurple, // Consistent met je appbar thema
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20),
       ),
       body: SingleChildScrollView(
-        // Gebruik SingleChildScrollView voor scrollen bij veel content
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Afbeelding van het item
-            if (item.afbeelding.isNotEmpty)
+            if (widget.item.afbeelding.isNotEmpty)
               Center(
                 child: Image.network(
-                  item.afbeelding,
+                  widget.item.afbeelding,
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -55,7 +116,7 @@ class DetailScreen extends StatelessWidget {
 
             // Naam van het item
             Text(
-              item.naam,
+              widget.item.naam,
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -66,21 +127,21 @@ class DetailScreen extends StatelessWidget {
 
             // Prijs en eenheid
             Text(
-              'Prijs: €${item.prijs}/${item.eenheid}',
+              'Prijs: €${widget.item.prijs}/${widget.item.eenheid}',
               style: const TextStyle(fontSize: 20, color: Colors.black87),
             ),
             const SizedBox(height: 8),
 
             // Locatie
             Text(
-              'Locatie: ${item.locatie}',
+              'Locatie: ${widget.item.locatie}',
               style: const TextStyle(fontSize: 18, color: Colors.black54),
             ),
             const SizedBox(height: 8),
 
             // Staat
             Text(
-              'Staat: ${item.staat}',
+              'Staat: ${widget.item.staat}',
               style: const TextStyle(fontSize: 18, color: Colors.black54),
             ),
             const SizedBox(height: 8),
@@ -89,25 +150,39 @@ class DetailScreen extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  item.isBeschikbaar ? Icons.check_circle : Icons.remove_circle,
-                  color: item.isBeschikbaar ? Colors.green : Colors.red,
+                  isCurrentlyAvailable
+                      ? Icons.check_circle
+                      : Icons.remove_circle,
+                  color: isCurrentlyAvailable ? Colors.green : Colors.red,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  item.isBeschikbaar ? 'Beschikbaar' : 'Niet beschikbaar',
+                  isCurrentlyAvailable ? 'Beschikbaar' : 'Niet beschikbaar',
                   style: TextStyle(
                     fontSize: 18,
-                    color: item.isBeschikbaar ? Colors.green : Colors.red,
+                    color: isCurrentlyAvailable ? Colors.green : Colors.red,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
+            if (!isCurrentlyAvailable && widget.item.reservedUntil != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  'Gereserveerd tot: ${widget.item.reservedUntil!.day}-${widget.item.reservedUntil!.month}-${widget.item.reservedUntil!.year}',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
 
             // Genres
-            if (item.genre.isNotEmpty)
+            if (widget.item.genre.isNotEmpty)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -121,10 +196,10 @@ class DetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 8.0, // Horizontale ruimte tussen chips
-                    runSpacing: 4.0, // Verticale ruimte tussen rijen chips
+                    spacing: 8.0,
+                    runSpacing: 4.0,
                     children:
-                        item.genre
+                        widget.item.genre
                             .map(
                               (category) => Chip(
                                 label: Text(category),
@@ -138,6 +213,37 @@ class DetailScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            const SizedBox(height: 24),
+
+            // Huur knop
+            ElevatedButton(
+              onPressed:
+                  isCurrentlyAvailable
+                      ? _rentItem
+                      : null, // Schakel knop uit indien niet beschikbaar
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isCurrentlyAvailable
+                        ? Colors.deepPurple
+                        : Colors.grey, // Kleur op basis van beschikbaarheid
+                foregroundColor: Colors.white,
+                minimumSize: const Size(
+                  double.infinity,
+                  50,
+                ), // Volle breedte knop
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 5,
+              ),
+              child: Text(
+                isCurrentlyAvailable ? 'Huur dit item' : 'Niet beschikbaar',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
       ),

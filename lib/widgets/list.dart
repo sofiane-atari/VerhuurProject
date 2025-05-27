@@ -2,13 +2,81 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_verhuur_project/Model/Appliance_model.dart';
 import 'package:flutter_verhuur_project/widgets/detailscreen.dart';
+import 'package:geolocator/geolocator.dart'; // Import geolocator
 
-class ListViewScreen extends StatelessWidget {
-  // De 'items' lijst is niet nodig als je data uit Firestore haalt.
-  // final List<String> items = List.generate(20, (index) => 'Item ${index + 1}');
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+class ListViewScreen extends StatefulWidget {
   ListViewScreen({super.key});
+
+  @override
+  State<ListViewScreen> createState() => _ListViewScreenState();
+}
+
+class _ListViewScreenState extends State<ListViewScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  Position? _currentPosition; // To store the user's current location
+  bool _isLoadingLocation = true;
+  String? _locationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _determinePosition(); // Start fetching the user's location
+  }
+
+  // Function to determine the user's position
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _locationError = 'Locatieservices zijn uitgeschakeld.';
+        _isLoadingLocation = false;
+      });
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _locationError = 'Locatietoestemmingen zijn geweigerd.';
+          _isLoadingLocation = false;
+        });
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _locationError =
+            'Locatietoestemmingen zijn permanent geweigerd, we kunnen geen locatie ophalen.';
+        _isLoadingLocation = false;
+      });
+      return;
+    }
+
+    // When permissions are granted, fetch the position.
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10), // Add a timeout
+      );
+      setState(() {
+        _currentPosition = position;
+        _isLoadingLocation = false;
+      });
+    } catch (e) {
+      setState(() {
+        _locationError = 'Fout bij het ophalen van de locatie: ${e.toString()}';
+        _isLoadingLocation = false;
+      });
+      print('Location error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,21 +94,41 @@ class ListViewScreen extends StatelessWidget {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: _buildItems(context), // Geef context door aan _buildItems
+        child: _buildItems(context),
       ),
     );
   }
 
   Widget _buildItems(BuildContext context) {
-    // Accepteer context hier
-    // Stream om alle apparaten op te halen (geen filter op eigenaarId voor deze algemene lijst)
+    if (_isLoadingLocation) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_locationError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _locationError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _determinePosition,
+                child: const Text('Locatie opnieuw proberen'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return StreamBuilder<QuerySnapshot>(
-      stream:
-          _firestore
-              .collection(
-                'apparaten',
-              ) // Zorg ervoor dat dit de juiste collectienaam is
-              .snapshots(), // Haalt alle documenten op
+      stream: _firestore.collection('apparaten').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -58,7 +146,6 @@ class ListViewScreen extends StatelessWidget {
           );
         }
 
-        // Map de documenten naar ApplianceModel objecten
         List<ApplianceModel> items =
             snapshot.data!.docs.map((doc) {
               Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -66,27 +153,22 @@ class ListViewScreen extends StatelessWidget {
                 id: doc.id,
                 naam: data['Naam'] ?? '',
                 afbeelding: data['afbeelding'] ?? '',
-                prijs:
-                    data['prijs']?.toDouble() ??
-                    0.0, // Zorg voor het juiste type
+                prijs: data['prijs']?.toDouble() ?? 0.0,
                 eenheid: data['eenheid'] ?? '',
                 isBeschikbaar: data['isBeschikbaar'] ?? false,
-                locatie: data['locatie'] ?? '',
+                // Locatie kan een GeoPoint zijn, dus direct casten
+                locatie: data['locatie'] is GeoPoint ? data['locatie'] : null,
                 genre: List<String>.from(data['genre'] ?? []),
                 staat: data['staat'] ?? '',
                 eigenaarId: data['eigenaarId'] ?? '',
               );
             }).toList();
 
-        // Gebruik een ListView.builder om de items weer te geven
         return ListView.builder(
           itemCount: items.length,
           itemBuilder: (context, index) {
             final item = items[index];
-            return _buildItemCard(
-              context, // Geef context door aan _buildItemCard
-              item,
-            ); // Functie om een kaart voor elk item te bouwen
+            return _buildItemCard(context, item);
           },
         );
       },
@@ -94,13 +176,27 @@ class ListViewScreen extends StatelessWidget {
   }
 
   Widget _buildItemCard(BuildContext context, ApplianceModel item) {
-    // Accepteer context hier
+    String distanceText = 'Locatie onbekend';
+    if (_currentPosition != null && item.locatie != null) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        (item.locatie as GeoPoint).latitude,
+        (item.locatie as GeoPoint).longitude,
+      );
+      // Convert to kilometers and round to 1 decimal place
+      double distanceInKm = distanceInMeters / 1000;
+      distanceText = '${distanceInKm.toStringAsFixed(1)} km van jou';
+    } else if (item.locatie != null) {
+      // If the user has no location, but the item has a GeoPoint
+      distanceText = 'Locatie beschikbaar';
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       color: Colors.white.withOpacity(0.9),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       child: ListTile(
-        // Afbeelding aan de linkerkant
         leading: SizedBox(
           width: 80,
           height: 80,
@@ -116,12 +212,8 @@ class ListViewScreen extends StatelessWidget {
                       );
                     },
                   )
-                  : const Icon(
-                    Icons.image_outlined,
-                    size: 50,
-                  ), // Placeholder als er geen afbeelding is
+                  : const Icon(Icons.image_outlined, size: 50),
         ),
-        // Titel van het item
         title: Text(
           item.naam,
           style: const TextStyle(
@@ -129,14 +221,12 @@ class ListViewScreen extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        // Subtitel met extra details
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Prijs: €${item.prijs}/${item.eenheid}'),
-            Text('Locatie: ${item.locatie}'),
-            if (item.genre.isNotEmpty) // Toon genres alleen als ze bestaan
-              Text('Genre: ${item.genre.join(', ')}'),
+            Text('Afstand: $distanceText'), // Display the calculated distance
+            if (item.genre.isNotEmpty) Text('Genre: ${item.genre.join(', ')}'),
             Text('Staat: ${item.staat}'),
             Row(
               children: [
@@ -151,18 +241,11 @@ class ListViewScreen extends StatelessWidget {
             ),
           ],
         ),
-        // Icoon aan de rechterkant
         trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey),
-        // Actie bij tikken op het item
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder:
-                  (context) => DetailScreen(
-                    item: item,
-                  ), // Geef het hele ApplianceModel door
-            ),
+            MaterialPageRoute(builder: (context) => DetailScreen(item: item)),
           );
         },
       ),

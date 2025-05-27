@@ -12,8 +12,8 @@ import 'package:geolocator/geolocator.dart';
 
 class Dashboard extends StatefulWidget {
   final User? user;
-
-  const Dashboard({super.key, this.user});
+  final VoidCallback? onSignOut;
+  const Dashboard({super.key, this.user, this.onSignOut});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -483,6 +483,34 @@ class _DashboardState extends State<Dashboard>
   }
 
   Widget _buildSettings() {
-    return const Center(child: Text('Instellingen komen hier'));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Instellingen',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              if (widget.onSignOut != null) {
+                widget.onSignOut!(); // Roep de doorgegeven uitlog-callback aan
+              }
+            },
+            icon: const Icon(Icons.logout),
+            label: const Text('Uitloggen'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent, // Rode kleur voor uitlogknop
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

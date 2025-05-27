@@ -113,6 +113,20 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> _handleSignOut() async {
+    try {
+      await _auth.signOut();
+      print('Gebruiker is uitgelogd.');
+      // De authStateChanges listener in initState zal automatisch de UI updaten
+      // (terug naar LoginScreen)
+    } catch (e) {
+      print('Fout bij uitloggen: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij uitloggen: ${e.toString()}')),
+      );
+    }
+  }
+
   void _goToRegisterScreen(BuildContext loginContext) {
     Navigator.of(loginContext).push(
       MaterialPageRoute(
@@ -145,7 +159,10 @@ class _MyAppState extends State<MyApp> {
       ),
       home:
           isLoggedIn
-              ? HomePage(user: _user) // Geef de gebruiker mee
+              ? HomePage(
+                user: _user,
+                onSignOut: _handleSignOut,
+              ) // Geef de gebruiker mee
               : LoginScreen(
                 onLogin: (email, password) => _handleSignIn(email, password),
                 // Correcte manier om de functie door te geven

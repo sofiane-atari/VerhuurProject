@@ -6,11 +6,12 @@ class ApplianceModel {
   final String afbeelding;
   final double prijs;
   final String eenheid;
-  final bool isBeschikbaar;
+  bool isBeschikbaar;
   final GeoPoint? locatie;
   final List<String> genre;
   final String staat;
   final String eigenaarId;
+  DateTime? reservedUntil;
 
   ApplianceModel({
     required this.id,
@@ -23,6 +24,7 @@ class ApplianceModel {
     required this.genre,
     required this.staat,
     required this.eigenaarId,
+    this.reservedUntil,
   });
 
   Map<String, dynamic> toJson() {
@@ -36,6 +38,8 @@ class ApplianceModel {
       'genre': genre,
       'staat': staat,
       'eigenaarId': eigenaarId,
+      'reservedUntil':
+          reservedUntil != null ? Timestamp.fromDate(reservedUntil!) : null,
     };
   }
 }
