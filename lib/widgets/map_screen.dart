@@ -222,9 +222,8 @@ class _MapScreenState extends State<MapScreen> {
             child: OSMFlutter(
               controller: _mapController,
               onGeoPointClicked: (geoPoint) async {
-                // Zoek het dichtstbijzijnde item binnen 50 meter
-                ApplianceModel? nearestItem;
-                double smallestDistance = double.infinity;
+                // Zoek alle items binnen 50 meter
+                List<ApplianceModel> nearbyItems = [];
                 
                 for (var entry in _markerItems.entries) {
                   final coords = entry.key.split(',');
@@ -238,15 +237,15 @@ class _MapScreenState extends State<MapScreen> {
                     markerLng,
                   );
                   
-                  if (distance < 50 && distance < smallestDistance) {
-                    smallestDistance = distance;
-                    nearestItem = entry.value;
+                  if (distance < 50) {
+                    nearbyItems.add(entry.value);
                   }
                 }
                 
-                if (nearestItem != null && mounted) {
+                if (nearbyItems.isNotEmpty && mounted) {
                   setState(() {
-                    _selectedItem = nearestItem;
+                    _nearbyItems = nearbyItems;
+                    _selectedItemIndex = 0;
                     _showPopup = true;
                   });
                 }
@@ -280,7 +279,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
           // Popup onder de map
-          if (_showPopup && _selectedItem != null)
+          if (_showPopup && _nearbyItems.isNotEmpty)
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -300,14 +299,42 @@ class _MapScreenState extends State<MapScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (_nearbyItems.length > 1)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Item ${_selectedItemIndex + 1} van ${_nearbyItems.length}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_selectedItem!.afbeelding.isNotEmpty)
+                          if (_nearbyItems.length > 1)
+                            IconButton(
+                              onPressed: _selectedItemIndex > 0
+                                  ? () {
+                                      setState(() {
+                                        _selectedItemIndex--;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.chevron_left),
+                              color: Colors.deepPurple,
+                            ),
+                          if (_nearbyItems[_selectedItemIndex].afbeelding.isNotEmpty)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
-                                _selectedItem!.afbeelding,
+                                _nearbyItems[_selectedItemIndex].afbeelding,
                                 width: 80,
                                 height: 80,
                                 fit: BoxFit.cover,
@@ -321,7 +348,7 @@ class _MapScreenState extends State<MapScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _selectedItem!.naam,
+                                  _nearbyItems[_selectedItemIndex].naam,
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -329,24 +356,24 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '€${_selectedItem!.prijs.toStringAsFixed(2)}/${_selectedItem!.eenheid}',
+                                  '€${_nearbyItems[_selectedItemIndex].prijs.toStringAsFixed(2)}/${_nearbyItems[_selectedItemIndex].eenheid}',
                                   style: const TextStyle(fontSize: 16),
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Icon(
-                                      _selectedItem!.isBeschikbaar
+                                      _nearbyItems[_selectedItemIndex].isBeschikbaar
                                           ? Icons.check_circle
                                           : Icons.cancel,
-                                      color: _selectedItem!.isBeschikbaar ? Colors.green : Colors.red,
+                                      color: _nearbyItems[_selectedItemIndex].isBeschikbaar ? Colors.green : Colors.red,
                                       size: 16,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _selectedItem!.isBeschikbaar ? 'Beschikbaar' : 'Niet beschikbaar',
+                                      _nearbyItems[_selectedItemIndex].isBeschikbaar ? 'Beschikbaar' : 'Niet beschikbaar',
                                       style: TextStyle(
-                                        color: _selectedItem!.isBeschikbaar ? Colors.green : Colors.red,
+                                        color: _nearbyItems[_selectedItemIndex].isBeschikbaar ? Colors.green : Colors.red,
                                       ),
                                     ),
                                   ],
@@ -354,11 +381,24 @@ class _MapScreenState extends State<MapScreen> {
                               ],
                             ),
                           ),
+                          if (_nearbyItems.length > 1)
+                            IconButton(
+                              onPressed: _selectedItemIndex < _nearbyItems.length - 1
+                                  ? () {
+                                      setState(() {
+                                        _selectedItemIndex++;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.chevron_right),
+                              color: Colors.deepPurple,
+                            ),
                           IconButton(
                             onPressed: () {
                               setState(() {
                                 _showPopup = false;
-                                _selectedItem = null;
+                                _nearbyItems = [];
+                                _selectedItemIndex = 0;
                               });
                             },
                             icon: const Icon(Icons.close),
@@ -371,19 +411,18 @@ class _MapScreenState extends State<MapScreen> {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              final item = _selectedItem; // Maak een lokale kopie
+                              final item = _nearbyItems[_selectedItemIndex];
                               setState(() {
                                 _showPopup = false;
-                                _selectedItem = null;
+                                _nearbyItems = [];
+                                _selectedItemIndex = 0;
                               });
-                              if (item != null) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DetailScreen(item: item),
-                                  ),
-                                );
-                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DetailScreen(item: item),
+                                ),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
@@ -402,6 +441,11 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
+
+  // State variabelen
+  List<ApplianceModel> _nearbyItems = [];
+  int _selectedItemIndex = 0;
+  bool _showPopup = false;
 
   Future<void> _loadMarkers() async {
     try {
@@ -464,7 +508,4 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
   }
-
-  ApplianceModel? _selectedItem;
-  bool _showPopup = false;
 }
