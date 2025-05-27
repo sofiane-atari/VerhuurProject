@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_verhuur_project/Model/Appliance_model.dart'; // Importeer je ApplianceModel
 import 'package:cloud_firestore/cloud_firestore.dart'; // Importeer Firestore
 import 'package:firebase_auth/firebase_auth.dart'; // Importeer FirebaseAuth
+import 'package:geolocator/geolocator.dart';
 
 class DetailScreen extends StatefulWidget {
   final ApplianceModel item;
@@ -17,12 +18,90 @@ class _DetailScreenState extends State<DetailScreen> {
       FirebaseFirestore.instance; // Firestore instantie
   String?
   _currentUserId; // Toegevoegd: Om de ID van de huidige huurder op te slaan
+  Position? _currentPosition;
+  bool _isLoadingLocation = true;
+  String? _locationError;
 
   @override
   void initState() {
     super.initState();
     // Haal de ID van de momenteel ingelogde gebruiker op
     _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    _determinePosition();
+  }
+
+  // Function to determine the user's position
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _locationError = 'Locatieservices zijn uitgeschakeld.';
+        _isLoadingLocation = false;
+      });
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _locationError = 'Locatietoestemmingen zijn geweigerd.';
+          _isLoadingLocation = false;
+        });
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _locationError = 'Locatietoestemmingen zijn permanent geweigerd.';
+        _isLoadingLocation = false;
+      });
+      return;
+    }
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+      setState(() {
+        _currentPosition = position;
+        _isLoadingLocation = false;
+      });
+    } catch (e) {
+      setState(() {
+        _locationError = 'Fout bij het ophalen van de locatie: ${e.toString()}';
+        _isLoadingLocation = false;
+      });
+      print('Location error: $e');
+    }
+  }
+
+  String _getDistanceText() {
+    if (_isLoadingLocation) {
+      return 'Locatie wordt opgehaald...';
+    }
+    if (_locationError != null) {
+      return 'Kon afstand niet berekenen';
+    }
+    if (_currentPosition != null && widget.item.locatie != null) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        (widget.item.locatie as GeoPoint).latitude,
+        (widget.item.locatie as GeoPoint).longitude,
+      );
+      // Convert to kilometers and round to 1 decimal place
+      double distanceInKm = distanceInMeters / 1000;
+      return '${distanceInKm.toStringAsFixed(1)} km van jou';
+    }
+    return 'Locatie onbekend';
   }
 
   // Functie om een item te huren
@@ -159,10 +238,24 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Locatie
-            Text(
-              'Locatie: ${widget.item.locatie}',
-              style: const TextStyle(fontSize: 18, color: Colors.black54),
+            // Locatie met afstand
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Locatie:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _getDistanceText(),
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
 
