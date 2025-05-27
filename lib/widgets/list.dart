@@ -16,11 +16,17 @@ class _ListViewScreenState extends State<ListViewScreen> {
   Position? _currentPosition; // To store the user's current location
   bool _isLoadingLocation = true;
   String? _locationError;
+  
+  // Filter state
+  double _maxDistance = 50000; // 50km in meters
+  String? _selectedCategory;
+  List<String> _availableCategories = [];
 
   @override
   void initState() {
     super.initState();
-    _determinePosition(); // Start fetching the user's location
+    _determinePosition();
+    _loadCategories();
   }
 
   // Function to determine the user's position
@@ -78,6 +84,25 @@ class _ListViewScreenState extends State<ListViewScreen> {
     }
   }
 
+  Future<void> _loadCategories() async {
+    try {
+      final snapshot = await _firestore
+          .collection('apparaten')
+          .get();
+
+      final categories = snapshot.docs
+          .expand((doc) => List<String>.from(doc.data()['genre'] ?? []))
+          .toSet()
+          .toList();
+      
+      setState(() {
+        _availableCategories = categories..sort();
+      });
+    } catch (e) {
+      print('Fout bij laden categorieën: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,7 +119,96 @@ class _ListViewScreenState extends State<ListViewScreen> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: _buildItems(context),
+        child: Column(
+          children: [
+            // Filter bar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              ),
+              child: Column(
+                children: [
+                  // Afstandsfilter
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.deepPurple),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Maximum afstand: ${(_maxDistance / 1000).round()} km',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Slider(
+                              value: _maxDistance,
+                              min: 1000, // 1km
+                              max: 100000, // 100km
+                              divisions: 99,
+                              activeColor: Colors.deepPurple,
+                              onChanged: (value) {
+                                setState(() {
+                                  _maxDistance = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Categorie filter
+                  Row(
+                    children: [
+                      const Icon(Icons.category, color: Colors.deepPurple),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: const InputDecoration(
+                            hintText: 'Filter op categorie',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Alle categorieën'),
+                            ),
+                            ..._availableCategories.map((category) {
+                              return DropdownMenuItem<String>(
+                                value: category,
+                                child: Text(category),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedCategory = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // List
+            Expanded(
+              child: _buildItems(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -146,30 +260,83 @@ class _ListViewScreenState extends State<ListViewScreen> {
           );
         }
 
-        List<ApplianceModel> items =
-            snapshot.data!.docs.map((doc) {
-              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-              return ApplianceModel(
-                id: doc.id,
-                naam: data['Naam'] ?? '',
-                afbeelding: data['afbeelding'] ?? '',
-                prijs: data['prijs']?.toDouble() ?? 0.0,
-                eenheid: data['eenheid'] ?? '',
-                isBeschikbaar: data['isBeschikbaar'] ?? false,
-                // Locatie kan een GeoPoint zijn, dus direct casten
-                locatie: data['locatie'] is GeoPoint ? data['locatie'] : null,
-                genre: List<String>.from(data['genre'] ?? []),
-                staat: data['staat'] ?? '',
-                eigenaarId: data['eigenaarId'] ?? '',
-                huurderId: data['huurderId'] as String?,
-              );
-            }).toList();
+        List<ApplianceModel> items = snapshot.data!.docs.map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          return ApplianceModel(
+            id: doc.id,
+            naam: data['Naam'] ?? '',
+            afbeelding: data['afbeelding'] ?? '',
+            prijs: data['prijs']?.toDouble() ?? 0.0,
+            eenheid: data['eenheid'] ?? '',
+            isBeschikbaar: data['isBeschikbaar'] ?? false,
+            locatie: data['locatie'] is GeoPoint ? data['locatie'] : null,
+            genre: List<String>.from(data['genre'] ?? []),
+            staat: data['staat'] ?? '',
+            eigenaarId: data['eigenaarId'] ?? '',
+            huurderId: data['huurderId'] as String?,
+          );
+        }).toList();
+
+        // Filter op afstand als we een locatie hebben
+        if (_currentPosition != null) {
+          items = items.where((item) {
+            if (item.locatie == null) return false;
+            
+            final distance = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              (item.locatie as GeoPoint).latitude,
+              (item.locatie as GeoPoint).longitude,
+            );
+            
+            return distance <= _maxDistance;
+          }).toList();
+        }
+
+        // Filter op categorie
+        if (_selectedCategory != null) {
+          items = items.where((item) => 
+            item.genre.contains(_selectedCategory)
+          ).toList();
+        }
+
+        // Sorteer op afstand
+        if (_currentPosition != null) {
+          items.sort((a, b) {
+            if (a.locatie == null) return 1;
+            if (b.locatie == null) return -1;
+            
+            final distanceA = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              (a.locatie as GeoPoint).latitude,
+              (a.locatie as GeoPoint).longitude,
+            );
+            
+            final distanceB = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              (b.locatie as GeoPoint).latitude,
+              (b.locatie as GeoPoint).longitude,
+            );
+            
+            return distanceA.compareTo(distanceB);
+          });
+        }
+
+        if (items.isEmpty) {
+          return const Center(
+            child: Text(
+              'Geen apparaten gevonden met de huidige filters.',
+              style: TextStyle(color: Colors.white),
+            ),
+          );
+        }
 
         return ListView.builder(
           itemCount: items.length,
           itemBuilder: (context, index) {
-            final item = items[index];
-            return _buildItemCard(context, item);
+            return _buildItemCard(context, items[index]);
           },
         );
       },
