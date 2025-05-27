@@ -212,229 +212,259 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: Stack(
-      children: [
-        OSMFlutter(
-          controller: _mapController,
-          onGeoPointClicked: (geoPoint) async {
-            // Zoek het dichtstbijzijnde item binnen 50 meter
-            ApplianceModel? nearestItem;
-            double smallestDistance = double.infinity;
-
-            for (var entry in _markerItems.entries) {
-              final coords = entry.key.split(',');
-              final markerLat = double.parse(coords[0]);
-              final markerLng = double.parse(coords[1]);
-              
-              final distance = Geolocator.distanceBetween(
-                geoPoint.latitude,
-                geoPoint.longitude,
-                markerLat,
-                markerLng,
-              );
-              
-              if (distance < 50 && distance < smallestDistance) {
-                smallestDistance = distance;
-                nearestItem = entry.value;
-              }
-            }
-            
-            if (nearestItem != null && mounted) {
-              _showItemPopup(nearestItem);
-            }
-          },
-          onMapIsReady: (isReady) async {
-            if (isReady) {
-              await _loadMarkers();
-            }
-          },
-          osmOption: OSMOption(
-            isPicker: false,
-            zoomOption: ZoomOption(
-              initZoom: 12,
-              minZoomLevel: 3,
-              maxZoomLevel: 19,
-              stepZoom: 1.0,
-            ),
-            userLocationMarker: UserLocationMaker(
-              personMarker: const MarkerIcon(
-                icon: Icon(
-                  Icons.location_history_rounded,
-                  color: Colors.green,
-                  size: 48,
-                ),
-              ),
-              directionArrowMarker: const MarkerIcon(
-                icon: Icon(Icons.double_arrow, size: 48),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Future<void> _loadMarkers() async {
-  try {
-    // Verwijder bestaande markers
-    for (var marker in _currentMarkers) {
-      await _mapController.removeMarker(marker);
-    }
-    _currentMarkers.clear();
-    _markerItems.clear();
-
-    // Haal items op uit Firestore
-    final snapshot = await firestore.FirebaseFirestore.instance
-        .collection('apparaten')
-        .get();
-
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      final locatie = data['locatie'] as firestore.GeoPoint?;
-      
-      if (locatie != null) {
-        final markerPoint = GeoPoint(
-          latitude: locatie.latitude,
-          longitude: locatie.longitude,
-        );
-
-        final item = ApplianceModel(
-          id: doc.id,
-          naam: data['Naam'] ?? '',
-          afbeelding: data['afbeelding'] ?? '',
-          prijs: data['prijs']?.toDouble() ?? 0.0,
-          eenheid: data['eenheid'] ?? '',
-          isBeschikbaar: data['isBeschikbaar'] ?? false,
-          locatie: locatie,
-          genre: List<String>.from(data['genre'] ?? []),
-          staat: data['staat'] ?? '',
-          eigenaarId: data['eigenaarId'] ?? '',
-        );
-        
-        await _mapController.addMarker(
-          markerPoint,
-          markerIcon: MarkerIcon(
-            icon: Icon(
-              Icons.location_on,
-              color: item.isBeschikbaar ? Colors.red : Colors.grey,
-              size: 48,
-            ),
-          ),
-        );
-        
-        _currentMarkers.add(markerPoint);
-        _markerItems['${markerPoint.latitude},${markerPoint.longitude}'] = item;
-      }
-    }
-  } catch (e) {
-    print('Fout bij laden markers: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kon markers niet laden: $e')),
-      );
-    }
-  }
-}
-
-void _showItemPopup(ApplianceModel item) {
-  showDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) => AlertDialog(
-      contentPadding: const EdgeInsets.all(16),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (item.afbeelding.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    item.afbeelding,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.image, size: 80),
+          // Map neemt alle beschikbare ruimte in behalve wanneer er een popup is
+          Expanded(
+            flex: _showPopup ? 3 : 1,
+            child: OSMFlutter(
+              controller: _mapController,
+              onGeoPointClicked: (geoPoint) async {
+                // Zoek het dichtstbijzijnde item binnen 50 meter
+                ApplianceModel? nearestItem;
+                double smallestDistance = double.infinity;
+                
+                for (var entry in _markerItems.entries) {
+                  final coords = entry.key.split(',');
+                  final markerLat = double.parse(coords[0]);
+                  final markerLng = double.parse(coords[1]);
+                  
+                  final distance = Geolocator.distanceBetween(
+                    geoPoint.latitude,
+                    geoPoint.longitude,
+                    markerLat,
+                    markerLng,
+                  );
+                  
+                  if (distance < 50 && distance < smallestDistance) {
+                    smallestDistance = distance;
+                    nearestItem = entry.value;
+                  }
+                }
+                
+                if (nearestItem != null && mounted) {
+                  setState(() {
+                    _selectedItem = nearestItem;
+                    _showPopup = true;
+                  });
+                }
+              },
+              onMapIsReady: (isReady) async {
+                if (isReady) {
+                  await _loadMarkers();
+                }
+              },
+              osmOption: OSMOption(
+                isPicker: false,
+                zoomOption: ZoomOption(
+                  initZoom: 12,
+                  minZoomLevel: 3,
+                  maxZoomLevel: 19,
+                  stepZoom: 1.0,
+                ),
+                userLocationMarker: UserLocationMaker(
+                  personMarker: const MarkerIcon(
+                    icon: Icon(
+                      Icons.location_history_rounded,
+                      color: Colors.green,
+                      size: 48,
+                    ),
+                  ),
+                  directionArrowMarker: const MarkerIcon(
+                    icon: Icon(Icons.double_arrow, size: 48),
                   ),
                 ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.naam,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '€${item.prijs.toStringAsFixed(2)}/${item.eenheid}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          item.isBeschikbaar
-                              ? Icons.check_circle
-                              : Icons.cancel,
-                          color: item.isBeschikbaar ? Colors.green : Colors.red,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.isBeschikbaar ? 'Beschikbaar' : 'Niet beschikbaar',
-                          style: TextStyle(
-                            color: item.isBeschikbaar ? Colors.green : Colors.red,
+              ),
+            ),
+          ),
+          // Popup onder de map
+          if (_showPopup && _selectedItem != null)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_selectedItem!.afbeelding.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _selectedItem!.afbeelding,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.image, size: 80),
+                              ),
+                            ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _selectedItem!.naam,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '€${_selectedItem!.prijs.toStringAsFixed(2)}/${_selectedItem!.eenheid}',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      _selectedItem!.isBeschikbaar
+                                          ? Icons.check_circle
+                                          : Icons.cancel,
+                                      color: _selectedItem!.isBeschikbaar ? Colors.green : Colors.red,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _selectedItem!.isBeschikbaar ? 'Beschikbaar' : 'Niet beschikbaar',
+                                      style: TextStyle(
+                                        color: _selectedItem!.isBeschikbaar ? Colors.green : Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _showPopup = false;
+                                _selectedItem = null;
+                              });
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              final item = _selectedItem; // Maak een lokale kopie
+                              setState(() {
+                                _showPopup = false;
+                                _selectedItem = null;
+                              });
+                              if (item != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => DetailScreen(item: item),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Details'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Sluiten'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DetailScreen(item: item),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Details'),
-              ),
-            ],
-          ),
+            ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Future<void> _loadMarkers() async {
+    try {
+      // Verwijder bestaande markers
+      for (var marker in _currentMarkers) {
+        await _mapController.removeMarker(marker);
+      }
+      _currentMarkers.clear();
+      _markerItems.clear();
+
+      // Haal items op uit Firestore
+      final snapshot = await firestore.FirebaseFirestore.instance
+          .collection('apparaten')
+          .get();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final locatie = data['locatie'] as firestore.GeoPoint?;
+        
+        if (locatie != null) {
+          final markerPoint = GeoPoint(
+            latitude: locatie.latitude,
+            longitude: locatie.longitude,
+          );
+
+          final item = ApplianceModel(
+            id: doc.id,
+            naam: data['Naam'] ?? '',
+            afbeelding: data['afbeelding'] ?? '',
+            prijs: data['prijs']?.toDouble() ?? 0.0,
+            eenheid: data['eenheid'] ?? '',
+            isBeschikbaar: data['isBeschikbaar'] ?? false,
+            locatie: locatie,
+            genre: List<String>.from(data['genre'] ?? []),
+            staat: data['staat'] ?? '',
+            eigenaarId: data['eigenaarId'] ?? '',
+          );
+          
+          await _mapController.addMarker(
+            markerPoint,
+            markerIcon: MarkerIcon(
+              icon: Icon(
+                Icons.location_on,
+                color: item.isBeschikbaar ? Colors.red : Colors.grey,
+                size: 48,
+              ),
+            ),
+          );
+          
+          _currentMarkers.add(markerPoint);
+          _markerItems['${markerPoint.latitude},${markerPoint.longitude}'] = item;
+        }
+      }
+    } catch (e) {
+      print('Fout bij laden markers: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kon markers niet laden: $e')),
+        );
+      }
+    }
+  }
+
+  ApplianceModel? _selectedItem;
+  bool _showPopup = false;
 }
